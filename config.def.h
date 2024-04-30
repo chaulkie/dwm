@@ -5,8 +5,8 @@ static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
-static const char *fonts[]          = { "monospace:size=10" };
-static char font[]            = "monospace:size=10";
+static char font[]                  = "monospace:size=10";
+static const char *fonts[]          = { font };
 static char col_fg[]          = "#ffffff";
 static char col_bg[]          = "#000000";
 static char col_hl[]		  = "#ff0000";
