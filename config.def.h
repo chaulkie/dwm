@@ -6,21 +6,23 @@ static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const char *fonts[]          = { "monospace:size=10" };
-static const char dmenufont[]       = "monospace:size=10";
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#005577";
-static const char col_black[]       = "#000000";
-static const char col_red[]         = "#ff0000";
-static const char col_yellow[]      = "#ffff00";
-static const char col_white[]       = "#ffffff";
+static char font[]            = "monospace:size=10";
+static char col_fg[]          = "#ffffff";
+static char col_bg[]          = "#000000";
+static char col_hl[]		  = "#ff0000";
+static char col_black[]       = "#000000";
+static char col_white[]       = "#ffffff";
+static char col_red[]         = "#ff0000";
+static char col_green[]       = "#00ff00";
+static char col_blue[]        = "#0000ff";
+static char col_yellow[]      = "#ffff00";
+static char col_cyan[]        = "#00ffff";
+static char col_magenta[]     = "#ff00ff";
 
 static const char *colors[][3]      = {
 	/*					fg         bg          border   */
-	[SchemeNorm] =	 { col_gray3, col_gray1,  col_gray2 },
-	[SchemeSel]  =	 { col_gray4, col_cyan,   col_cyan },
+	[SchemeNorm] =	 { col_fg,    col_bg,     col_fg },
+	[SchemeSel]  =	 { col_bg,    col_fg,     col_hl },
 	[SchemeWarn] =	 { col_black, col_yellow, col_red },
 	[SchemeUrgent]=	 { col_white, col_red,    col_red },
 };
@@ -39,9 +41,9 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
-static const int nmaster     = 1;    /* number of clients in master area */
-static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
+static float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
+static int nmaster     = 1;    /* number of clients in master area */
+static int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
 static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
 
 static const Layout layouts[] = {
@@ -64,8 +66,26 @@ static const Layout layouts[] = {
 
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", font, "-nb", col_bg, "-nf", col_fg, "-sb", col_fg, "-sf", col_bg, NULL };
 static const char *termcmd[]  = { "st", NULL };
+
+/*
+ * Xresources preferences to load at startup
+ */
+ResourcePref resources[] = {
+		{ "font",               STRING,  &font },
+		{ "background",         STRING,  &col_bg },
+		{ "foreground",         STRING,  &col_fg },
+		{ "color1",             STRING,  &col_hl },
+		{ "color0",             STRING,  &col_black },
+		{ "color1",             STRING,  &col_red },
+		{ "color2",             STRING,  &col_green },
+		{ "color3",             STRING,  &col_yellow },
+		{ "color4",             STRING,  &col_blue },
+		{ "color5",             STRING,  &col_magenta },
+		{ "color6",             STRING,  &col_cyan },
+		{ "color7",             STRING,  &col_white },
+};
 
 static const Key keys[] = {
 	/* modifier                     key        function        argument */
