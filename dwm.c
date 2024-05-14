@@ -55,7 +55,10 @@
 #define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
-#define TAGMASK                 ((1 << LENGTH(tags)) - 1)
+#define NUMTAGS					(LENGTH(tags) + LENGTH(scratchpads))
+#define TAGMASK     			((1 << NUMTAGS) - 1)
+#define SPTAG(i) 				((1 << LENGTH(tags)) << (i))
+#define SPTAGMASK   			(((1 << LENGTH(scratchpads))-1) << LENGTH(tags))
 #define TEXTW(X)                (drw_fontset_getwidth(drw, (X)) + lrpad)
 
 /* enums */
@@ -235,6 +238,7 @@ static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void togglescratch(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
@@ -324,6 +328,10 @@ applyrules(Client *c)
 		{
 			c->isfloating = r->isfloating;
 			c->tags |= r->tags;
+			if ((r->tags & SPTAGMASK) && r->isfloating) {
+				c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+				c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
+			}
 			for (m = mons; m && (m->tagset[m->seltags] & c->tags) == 0; m = m->next);
 			if (m)
 				c->mon = m;
@@ -333,7 +341,7 @@ applyrules(Client *c)
 		XFree(ch.res_class);
 	if (ch.res_name)
 		XFree(ch.res_name);
-	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : (c->mon->tagset[c->mon->seltags] & ~SPTAGMASK);
 }
 
 int
@@ -1736,6 +1744,10 @@ showhide(Client *c)
 	if (!c)
 		return;
 	if (ISVISIBLE(c, c->mon)) {
+		if ((c->tags & SPTAGMASK) && c->isfloating) {
+			c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+			c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
+		}
 		/* show clients top down */
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
@@ -1859,6 +1871,36 @@ togglefloating(const Arg *arg)
 }
 
 void
+togglescratch(const Arg *arg)
+{
+	Client *c;
+	Monitor *m;
+	unsigned int found = 0;
+	unsigned int scratchtag = SPTAG(arg->ui);
+	Arg sparg = {.v = scratchpads[arg->ui].cmd};
+
+	// remove scratchpad from any other monitors
+	for (m = mons; m; m = m->next)
+		if (m != selmon && m->tagset[m->seltags] & scratchtag) {
+			m->tagset[m->seltags] = m->tagset[m->seltags] ^ scratchtag;
+			attachclients(m);
+			arrange(m);
+		}
+
+	for (c = selmon->cl->clients; c && !(found = c->tags & scratchtag); c = c->next);
+	if (found) {
+		toggleview(&((Arg) {.ui = scratchtag}));
+		if (ISVISIBLE(c, selmon)) {
+			focus(c);
+			restack(selmon);
+		}
+	} else {
+		view(&((Arg) {.ui = selmon->tagset[selmon->seltags] | scratchtag}));
+		spawn(&sparg);
+	}
+}
+
+void
 toggletag(const Arg *arg)
 {
 	Monitor *m;
@@ -1867,7 +1909,7 @@ toggletag(const Arg *arg)
 	if (!selmon->sel)
 		return;
 	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
-	if (newtags) {
+	if (newtags) { // won't leave a client with no tags
 		/* prevent adding tags that are in use on other monitors */
 		for (m = mons; m; m = m->next)
 			if (m != selmon && newtags & m->tagset[m->seltags])
@@ -1893,15 +1935,6 @@ toggleview(const Arg *arg)
 		attachclients(selmon);
 		arrange(selmon);
 		focus(NULL);
-
-		unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
-
-		if (newtagset) {
-			selmon->tagset[selmon->seltags] = newtagset;
-			attachclients(selmon);
-			arrange(selmon);
-			focus(NULL);
-		}
 	}
 }
 
@@ -2202,7 +2235,7 @@ view(const Arg *arg)
 	/* swap tags when trying to display a tag from another monitor */
 	if (arg->ui & TAGMASK)
 		newtagset = arg->ui & TAGMASK;
-	for (m = mons; m; m = m->next)
+	for (m = mons; m; m = m->next) // for each monitor that has desired tags
 		if (m != selmon && newtagset & m->tagset[m->seltags]) {
 			/* prevent displaying all tags (MODKEY-0) when multiple monitors
 			 * are connected */
